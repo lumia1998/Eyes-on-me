@@ -101,6 +101,7 @@ jobs:
           TARGET_TRIPLE: ${{ matrix.target }}
           BUNDLE_NAME: eyes-on-me-bundle-${{ matrix.target }}
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker || '' }}
+        shell: bash
         run: ./_scripts/package-target.sh
 
       - name: Archive bundle (unix)

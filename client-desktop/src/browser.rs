@@ -127,7 +127,7 @@ pub fn detect_browser_context(app: &AppInfo, window_title: Option<&str>) -> Opti
     let mut url = None;
     let mut domain = None;
     let mut source = "window-title".to_string();
-    let mut confidence = if title.is_some() { 0.42 } else { 0.18 };
+    let mut confidence: f32 = if title.is_some() { 0.42 } else { 0.18 };
 
     #[cfg(target_os = "macos")]
     if let Some(mac_page) = read_macos_browser_page(browser) {
