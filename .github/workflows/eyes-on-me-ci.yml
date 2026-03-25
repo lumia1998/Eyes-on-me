@@ -1,0 +1,80 @@
+name: eyes-on-me-ci
+
+on:
+  # 手动触发：不打标签也可以临时跑一次检查。
+  workflow_dispatch:
+  pull_request:
+    # PR 提交后自动跑轻量检查，方便在审核和合并前先发现问题。
+    branches:
+      - main
+      - master
+    paths:
+      - ".github/workflows/eyes-on-me-ci.yml"
+      - ".github/workflows/eyes-on-me-release.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "README.md"
+      - "_scripts/**"
+      - "client-server/**"
+      - "client-desktop/**"
+      - "shared/**"
+      - "web/**"
+  push:
+    # 直接推送到主分支时也会跑一次基础检查。
+    branches:
+      - main
+      - master
+    paths:
+      - ".github/workflows/eyes-on-me-ci.yml"
+      - ".github/workflows/eyes-on-me-release.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "README.md"
+      - "_scripts/**"
+      - "client-server/**"
+      - "client-desktop/**"
+      - "shared/**"
+      - "web/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eyes-on-me-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # 这里只做轻量 CI：检查 Rust 和前端能否通过，不做发版打包。
+    name: rust-and-web-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Rust workspace
+        run: cargo check --workspace --all-targets --locked
+
+      - name: Build web
+        working-directory: web
+        run: pnpm build

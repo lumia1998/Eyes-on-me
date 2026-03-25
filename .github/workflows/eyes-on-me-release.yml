@@ -1,37 +1,12 @@
 name: eyes-on-me-release
 
 on:
+  # 手动触发：用于临时验证打包流程，或手动跑一次发版前检查。
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-      - master
-    paths:
-      - ".github/workflows/eyes-on-me-release.yml"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "README.md"
-      - "_scripts/**"
-      - "client-server/**"
-      - "client-desktop/**"
-      - "shared/**"
-      - "web/**"
   push:
-    branches:
-      - main
-      - master
+    # 只有推送 v1.2.3 这类版本标签时，才会真正执行发版构建。
     tags:
       - "v*"
-    paths:
-      - ".github/workflows/eyes-on-me-release.yml"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "README.md"
-      - "_scripts/**"
-      - "client-server/**"
-      - "client-desktop/**"
-      - "shared/**"
-      - "web/**"
 
 permissions:
   contents: write
@@ -42,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    # 发版使用的完整跨平台打包矩阵，会为多个目标平台生成产物。
     name: build-${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -97,6 +73,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Package target bundle
+        # 这里统一强制使用 bash，因为打包入口本身是 shell 脚本，Windows 也一样。
         env:
           TARGET_TRIPLE: ${{ matrix.target }}
           BUNDLE_NAME: eyes-on-me-bundle-${{ matrix.target }}
@@ -124,6 +101,7 @@ jobs:
           retention-days: 14
 
   release:
+    # 只有版本标签构建才会发布 GitHub Release。
     name: publish-release
     runs-on: ubuntu-latest
     needs: build
