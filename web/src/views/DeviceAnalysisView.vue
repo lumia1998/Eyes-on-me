@@ -1,0 +1,199 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import { fetchDeviceAnalysis, fetchDeviceDetail } from "../api";
+import { activityHeadline, formatDateTime, formatDurationLong, formatTime, usageShare } from "../lib/activity";
+import { ANALYSIS_RANGE_OPTIONS, analysisRangeLabel, normalizeAnalysisRange } from "../lib/analysis-range";
+import type { AnalysisRange, DeviceAnalysisResponse, DeviceDetailResponse } from "../types";
+
+const props = defineProps<{
+  connection: "connecting" | "live" | "closed";
+  nowMs: number;
+  refreshToken: number;
+}>();
+
+const route = useRoute();
+const router = useRouter();
+const deviceId = computed(() => String(route.params.deviceId ?? ""));
+const selectedRange = computed(() => normalizeAnalysisRange(route.query.range));
+
+const loading = ref(true);
+const error = ref<string | null>(null);
+const detail = ref<DeviceDetailResponse | null>(null);
+const analysis = ref<DeviceAnalysisResponse | null>(null);
+
+const appUsage = computed(() => analysis.value?.appUsage ?? []);
+const domainUsage = computed(() => analysis.value?.domainUsage ?? []);
+const hasDeviceAnalysis = computed(() => appUsage.value.length > 0 || domainUsage.value.length > 0);
+
+async function loadData() {
+  loading.value = true;
+
+  try {
+    const [deviceDetail, deviceAnalysis] = await Promise.all([
+      fetchDeviceDetail(deviceId.value),
+      fetchDeviceAnalysis(deviceId.value, selectedRange.value)
+    ]);
+    detail.value = deviceDetail;
+    analysis.value = deviceAnalysis;
+    error.value = null;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function updateRange(range: AnalysisRange) {
+  if (range === selectedRange.value) {
+    return;
+  }
+
+  await router.replace({
+    query: {
+      ...route.query,
+      range
+    }
+  });
+}
+
+onMounted(loadData);
+watch([deviceId, selectedRange, () => props.refreshToken], loadData);
+</script>
+
+<template>
+  <section v-if="loading" class="panel">
+    <p>Loading device analysis...</p>
+  </section>
+
+  <section v-else-if="error" class="panel error-panel">
+    <p>{{ error }}</p>
+  </section>
+
+  <section v-else-if="!detail || !analysis" class="panel">
+    <div class="panel-header">
+      <h2>设备不存在</h2>
+      <RouterLink class="button-link" to="/">返回汇总</RouterLink>
+    </div>
+    <p class="muted">当前设备还没有分析上下文。</p>
+  </section>
+
+  <template v-else>
+    <section class="page-actions">
+      <RouterLink class="button-link" to="/">返回汇总</RouterLink>
+      <RouterLink class="button-link" :to="`/devices/${encodeURIComponent(deviceId)}`">返回设备明细</RouterLink>
+      <span class="muted">连接状态：{{ connection }}</span>
+      <span class="muted">统计范围：{{ analysisRangeLabel(selectedRange) }}</span>
+    </section>
+
+    <section class="panel range-panel">
+      <div class="panel-header">
+        <h2>时间范围</h2>
+        <span>{{ analysisRangeLabel(selectedRange) }}</span>
+      </div>
+      <div class="range-switcher">
+        <button
+          v-for="option in ANALYSIS_RANGE_OPTIONS"
+          :key="option.value"
+          type="button"
+          class="range-chip"
+          :class="{ active: option.value === selectedRange }"
+          @click="updateRange(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </section>
+
+    <section v-if="!hasDeviceAnalysis" class="panel empty-state">
+      <span class="eyebrow">No Breakdown Yet</span>
+      <h2 class="analysis-title">{{ detail.device.deviceId }}</h2>
+      <p class="analysis-lede">
+        当前已经识别到这个设备，但在 {{ analysisRangeLabel(selectedRange) }} 内还没有足够的活动切换来形成可读的应用窗口或域名统计。
+        继续使用一段时间后，这里会自动聚合出时长排行。
+      </p>
+    </section>
+
+    <template v-else>
+    <section class="analysis-summary">
+      <article class="panel">
+        <span class="eyebrow">Device Breakdown</span>
+        <h2 class="analysis-title">{{ detail.device.deviceId }}</h2>
+        <p class="analysis-lede">
+          {{ analysis.latestStatus?.statusText || analysis.currentLabel || activityHeadline(detail.device) }}
+          <span class="muted"> · {{ analysisRangeLabel(selectedRange) }}</span>
+        </p>
+
+        <div class="stats-row">
+          <div class="metric-block">
+            <span class="label">累计记录时长</span>
+            <strong>{{ formatDurationLong(analysis.totalTrackedMs) }}</strong>
+          </div>
+          <div class="metric-block">
+            <span class="label">前台切换次数</span>
+            <strong>{{ analysis.eventCount }}</strong>
+          </div>
+          <div class="metric-block">
+            <span class="label">最近活动</span>
+            <strong>{{ formatDateTime(detail.device.ts) }}</strong>
+          </div>
+          <div class="metric-block">
+            <span class="label">分析生成</span>
+            <strong>{{ formatTime(analysis.generatedAt) }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>应用窗口累计</h2>
+          <span>{{ appUsage.length }}</span>
+        </div>
+
+        <ul class="usage-list">
+          <li v-for="bucket in appUsage" :key="bucket.key" class="usage-item">
+            <div class="usage-copy">
+              <strong>{{ bucket.label }}</strong>
+              <p>{{ bucket.sublabel || "未提供窗口附加信息" }}</p>
+              <div class="usage-bar">
+                <span :style="{ width: `${usageShare(analysis.totalTrackedMs, bucket.totalTrackedMs)}%` }" />
+              </div>
+              <span class="inline-meta">{{ bucket.sessions }} 次进入 · 最近 {{ formatDateTime(bucket.lastSeen) }}</span>
+            </div>
+            <div class="usage-side">
+              <strong>{{ formatDurationLong(bucket.totalTrackedMs) }}</strong>
+              <span class="inline-meta">{{ usageShare(analysis.totalTrackedMs, bucket.totalTrackedMs).toFixed(1) }}%</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>域名累计</h2>
+          <span>{{ domainUsage.length }}</span>
+        </div>
+
+        <ul class="usage-list">
+          <li v-for="bucket in domainUsage" :key="bucket.key" class="usage-item">
+            <div class="usage-copy">
+              <strong>{{ bucket.label }}</strong>
+              <p>{{ bucket.sublabel || "未提供页面标题" }}</p>
+              <div class="usage-bar">
+                <span :style="{ width: `${usageShare(analysis.totalTrackedMs, bucket.totalTrackedMs)}%` }" />
+              </div>
+              <span class="inline-meta">{{ bucket.sessions }} 次访问 · 最近 {{ formatDateTime(bucket.lastSeen) }}</span>
+            </div>
+            <div class="usage-side">
+              <strong>{{ formatDurationLong(bucket.totalTrackedMs) }}</strong>
+              <span class="inline-meta">{{ usageShare(analysis.totalTrackedMs, bucket.totalTrackedMs).toFixed(1) }}%</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+    </section>
+    </template>
+  </template>
+</template>
