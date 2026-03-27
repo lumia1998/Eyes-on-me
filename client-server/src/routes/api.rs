@@ -1,6 +1,5 @@
 use std::{convert::Infallible, sync::Arc, time::Duration};
 
-use amiokay_shared::{ActivityEvent, DeviceStatus, StreamMessage};
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
@@ -8,6 +7,7 @@ use axum::{
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post},
 };
+use eyes_on_me_shared::{ActivityEvent, DeviceStatus, StreamMessage};
 use serde::Deserialize;
 use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use tracing::error;
@@ -63,13 +63,13 @@ async fn health() -> Json<serde_json::Value> {
 
 async fn get_current(
     State(state): State<Arc<AppState>>,
-) -> Json<amiokay_shared::DashboardSnapshot> {
+) -> Json<eyes_on_me_shared::DashboardSnapshot> {
     Json(state.snapshot())
 }
 
 async fn get_devices(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<amiokay_shared::DevicesResponse>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::DevicesResponse>, StatusCode> {
     state.devices_response().await.map(Json).map_err(|err| {
         error!(error = %err, "failed to load devices response");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -79,7 +79,7 @@ async fn get_devices(
 async fn get_device_detail(
     Path(device_id): Path<String>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<amiokay_shared::DeviceDetailResponse>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::DeviceDetailResponse>, StatusCode> {
     match state.device_detail(&device_id).await {
         Ok(Some(device)) => Ok(Json(device)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -93,7 +93,7 @@ async fn get_device_detail(
 async fn get_analysis_overview(
     Query(query): Query<AnalysisQuery>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<amiokay_shared::AnalysisOverviewResponse>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::AnalysisOverviewResponse>, StatusCode> {
     let range = AnalysisRange::from_query(query.range.as_deref()).ok_or(StatusCode::BAD_REQUEST)?;
 
     state
@@ -110,7 +110,7 @@ async fn get_device_analysis(
     Path(device_id): Path<String>,
     Query(query): Query<AnalysisQuery>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<amiokay_shared::DeviceAnalysisResponse>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::DeviceAnalysisResponse>, StatusCode> {
     let range = AnalysisRange::from_query(query.range.as_deref()).ok_or(StatusCode::BAD_REQUEST)?;
 
     match state.device_analysis(&device_id, range).await {
@@ -126,7 +126,7 @@ async fn get_device_analysis(
 async fn post_activity(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ActivityInput>,
-) -> Result<Json<amiokay_shared::DashboardSnapshot>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::DashboardSnapshot>, StatusCode> {
     let payload = match payload {
         ActivityInput::Raw(payload) => payload,
         ActivityInput::Envelope(message) => message.payload,
@@ -142,7 +142,7 @@ async fn post_activity(
 async fn post_status(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<StatusInput>,
-) -> Result<Json<amiokay_shared::DashboardSnapshot>, StatusCode> {
+) -> Result<Json<eyes_on_me_shared::DashboardSnapshot>, StatusCode> {
     let payload = match payload {
         StatusInput::Raw(payload) => payload,
         StatusInput::Envelope(message) => message.payload,

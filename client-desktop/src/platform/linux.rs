@@ -3,8 +3,8 @@ use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use amiokay_shared::PresenceState;
 use anyhow::{Result, anyhow, bail};
+use eyes_on_me_shared::PresenceState;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 

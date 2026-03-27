@@ -75,7 +75,8 @@ cd /Users/wong/Code/RustLang/Eyes_on_me
 
 默认地址：
 
-- `http://127.0.0.1:8787`
+- 默认监听：`0.0.0.0:8787`
+- 本机访问：`http://127.0.0.1:8787`
 - 默认数据库文件：`DB/eyes-on-me.db`
 - 服务端二进制默认内嵌前端页面资源，不依赖外部 `web/dist`
 
@@ -116,7 +117,7 @@ Vite 已经把 `/api` 和 `/health` 代理到本地服务端 `http://127.0.0.1:8
 如果你想强制让服务端读取某个外部静态目录，也可以手动指定：
 
 ```bash
-AMI_OKAY_WEB_DIST=/absolute/path/to/web/dist ./_scripts/run-server.sh
+EYES_ON_ME_WEB_DIST=/absolute/path/to/web/dist ./_scripts/run-server.sh
 ```
 
 ### 本机开发模式

@@ -5,7 +5,7 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
-amiokay-shared = { path = "../shared" }
+eyes-on-me-shared = { path = "../shared" }
 anyhow = "1"
 axum = { version = "0.8", features = ["macros"] }
 futures-util = "0.3"

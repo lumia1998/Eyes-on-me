@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     let pool = db::connect(&config.database_url).await?;
     let snapshot = db::load_snapshot(&pool)
         .await
-        .unwrap_or_else(|_| amiokay_shared::DashboardSnapshot::demo());
+        .unwrap_or_else(|_| eyes_on_me_shared::DashboardSnapshot::demo());
     let state = Arc::new(AppState::new(snapshot, pool));
 
     let app = Router::new()

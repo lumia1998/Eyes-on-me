@@ -40,6 +40,9 @@
 - bundle 中的 agent 默认静默读取配置，不再每次交互提示
 - bundle 启动脚本统一在 bundle 根目录执行
 - `client-server` 现在会在构建时直接内嵌 `web/dist`，发布包不再依赖额外复制的 `web/dist`
+- 服务端默认监听地址改为 `0.0.0.0:8787`，裸二进制默认即可用于局域网访问
+- 服务端环境变量前缀统一改为 `EYES_ON_ME_*`
+- 共享库 crate 名从旧的 `amiokay-shared` 改为 `eyes-on-me-shared`
 - 打包默认保留 bundle 目录中原有的数据库
 - 只有显式指定 `PACKAGE_COPY_DB=1` 时，才会把根目录数据库复制进 bundle
 - GitHub Actions 已同步调整为先构建前端，再编译服务端，保证发布产物内嵌的是最新页面

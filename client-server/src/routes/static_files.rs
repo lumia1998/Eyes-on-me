@@ -14,7 +14,7 @@ use axum::{
 use include_dir::{Dir, include_dir};
 use tokio::fs;
 
-static EMBEDDED_WEB_DIST: Dir<'_> = include_dir!("$AMI_OKAY_EMBED_WEB_DIST");
+static EMBEDDED_WEB_DIST: Dir<'_> = include_dir!("$EYES_ON_ME_EMBED_WEB_DIST");
 
 #[derive(Clone)]
 struct StaticState {

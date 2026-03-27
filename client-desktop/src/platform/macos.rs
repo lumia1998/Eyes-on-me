@@ -3,9 +3,9 @@ use std::ptr::NonNull;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use amiokay_shared::PresenceState;
 use anyhow::Result;
 use block2::RcBlock;
+use eyes_on_me_shared::PresenceState;
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::{
     NSRunningApplication, NSWorkspace, NSWorkspaceDidActivateApplicationNotification,

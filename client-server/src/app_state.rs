@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use amiokay_shared::{
+use eyes_on_me_shared::{
     ActivityEvent, ActivityKind, AnalysisOverviewResponse, BrowserUsageBucket, DashboardSnapshot,
     DeviceAnalysisResponse, DeviceAnalysisSummary, DeviceDetailResponse, DeviceOverview,
     DeviceStatus, DevicesResponse, DomainUsageBucket, PageUsageBucket, PresenceState,
@@ -825,7 +825,7 @@ fn current_activity_label(activity: &ActivityEvent) -> String {
 mod tests {
     use std::collections::HashMap;
 
-    use amiokay_shared::{
+    use eyes_on_me_shared::{
         ActivityApp, ActivityEvent, ActivityKind, BrowserContext, Platform, PresenceState,
     };
 

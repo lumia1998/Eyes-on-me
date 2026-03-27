@@ -79,7 +79,8 @@ cd /Users/wong/Code/RustLang/Eyes_on_me
 
 Default address:
 
-- `http://127.0.0.1:8787`
+- Default listen address: `0.0.0.0:8787`
+- Local access URL: `http://127.0.0.1:8787`
 - Default database file: `DB/eyes-on-me.db`
 - The server binary embeds the web UI by default, so it does not require an external `web/dist`
 
@@ -126,7 +127,7 @@ Vite already proxies `/api` and `/health` to the local server at `http://127.0.0
 If you want to force the server to read a specific external static directory, you can still override it:
 
 ```bash
-AMI_OKAY_WEB_DIST=/absolute/path/to/web/dist ./_scripts/run-server.sh
+EYES_ON_ME_WEB_DIST=/absolute/path/to/web/dist ./_scripts/run-server.sh
 ```
 
 ### Local development mode

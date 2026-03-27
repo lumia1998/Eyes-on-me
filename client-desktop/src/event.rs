@@ -3,7 +3,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::browser::BrowserContext;
-use amiokay_shared::PresenceState;
+use eyes_on_me_shared::PresenceState;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ActivityEnvelope {

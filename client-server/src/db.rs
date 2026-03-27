@@ -4,11 +4,11 @@ use std::{
     str::FromStr,
 };
 
-use amiokay_shared::{
+use anyhow::Context;
+use eyes_on_me_shared::{
     ActivityApp, ActivityEvent, ActivityKind, DashboardSnapshot, DeviceStatus, Platform,
     PresenceState,
 };
-use anyhow::Context;
 use sqlx::{
     ConnectOptions, Row, SqlitePool,
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},

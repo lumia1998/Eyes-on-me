@@ -16,7 +16,7 @@ fn main() {
     };
 
     println!(
-        "cargo:rustc-env=AMI_OKAY_EMBED_WEB_DIST={}",
+        "cargo:rustc-env=EYES_ON_ME_EMBED_WEB_DIST={}",
         embed_dir.display()
     );
 }

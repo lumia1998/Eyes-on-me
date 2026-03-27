@@ -3,8 +3,8 @@ use std::path::Path;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use amiokay_shared::PresenceState;
 use anyhow::Result;
+use eyes_on_me_shared::PresenceState;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, HWND};

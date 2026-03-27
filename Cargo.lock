@@ -18,16 +18,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
-name = "amiokay-shared"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "time",
- "uuid",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -224,12 +214,12 @@ dependencies = [
 name = "client-desktop"
 version = "0.1.0"
 dependencies = [
- "amiokay-shared",
  "anyhow",
  "block2",
  "chrono",
  "core-foundation",
  "core-graphics",
+ "eyes-on-me-shared",
  "hostname",
  "objc2",
  "objc2-app-kit",
@@ -250,9 +240,9 @@ dependencies = [
 name = "client-server"
 version = "0.1.0"
 dependencies = [
- "amiokay-shared",
  "anyhow",
  "axum",
+ "eyes-on-me-shared",
  "futures-util",
  "include_dir",
  "mime_guess",
@@ -476,6 +466,16 @@ dependencies = [
  "concurrent-queue",
  "parking",
  "pin-project-lite",
+]
+
+[[package]]
+name = "eyes-on-me-shared"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "time",
+ "uuid",
 ]
 
 [[package]]

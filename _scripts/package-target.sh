@@ -37,17 +37,17 @@ migrate_legacy_runtime_files() {
   mkdir -p "$ROOT_DIR/DB"
 
   if [ ! -f "$root_db" ] && [ -f "$root_db_legacy" ]; then
-    log "RUN" "migrate legacy database name into rust-monolith/DB"
+    log "RUN" "migrate legacy database name into Eyes_on_me/DB"
     cp "$root_db_legacy" "$root_db"
   fi
 
   if [ ! -f "$root_db" ] && [ -f "$legacy_db" ]; then
-    log "RUN" "import legacy database into rust-monolith/DB"
+    log "RUN" "import legacy database into Eyes_on_me/DB"
     cp "$legacy_db" "$root_db"
   fi
 
   if [ ! -f "$root_config" ] && [ -f "$legacy_config" ]; then
-    log "RUN" "import legacy agent config into rust-monolith root"
+    log "RUN" "import legacy agent config into Eyes_on_me root"
     cp "$legacy_config" "$root_config"
   fi
 }
@@ -109,18 +109,18 @@ if [[ "$TARGET_TRIPLE" == *windows* ]]; then
 set ROOT_DIR=%~dp0
 cd /d \"%ROOT_DIR%\"
 if not exist \"%ROOT_DIR%DB\" mkdir \"%ROOT_DIR%DB\"
-if \"%AMI_OKAY_HOST%\"==\"\" set AMI_OKAY_HOST=127.0.0.1
-if \"%AMI_OKAY_PORT%\"==\"\" set AMI_OKAY_PORT=8787
-if \"%AMI_OKAY_DATABASE_URL%\"==\"\" set AMI_OKAY_DATABASE_URL=sqlite://DB/eyes-on-me.db
+if \"%EYES_ON_ME_HOST%\"==\"\" set EYES_ON_ME_HOST=0.0.0.0
+if \"%EYES_ON_ME_PORT%\"==\"\" set EYES_ON_ME_PORT=8787
+if \"%EYES_ON_ME_DATABASE_URL%\"==\"\" set EYES_ON_ME_DATABASE_URL=sqlite://DB/eyes-on-me.db
 \"%ROOT_DIR%bin\\$SERVER_BIN_NAME\""
 
     write_windows_script "$OUTPUT_DIR/$SERVER_PUBLIC_RUN_NAME" "@echo off
 set ROOT_DIR=%~dp0
 cd /d \"%ROOT_DIR%\"
 if not exist \"%ROOT_DIR%DB\" mkdir \"%ROOT_DIR%DB\"
-if \"%AMI_OKAY_HOST%\"==\"\" set AMI_OKAY_HOST=0.0.0.0
-if \"%AMI_OKAY_PORT%\"==\"\" set AMI_OKAY_PORT=8787
-if \"%AMI_OKAY_DATABASE_URL%\"==\"\" set AMI_OKAY_DATABASE_URL=sqlite://DB/eyes-on-me.db
+if \"%EYES_ON_ME_HOST%\"==\"\" set EYES_ON_ME_HOST=0.0.0.0
+if \"%EYES_ON_ME_PORT%\"==\"\" set EYES_ON_ME_PORT=8787
+if \"%EYES_ON_ME_DATABASE_URL%\"==\"\" set EYES_ON_ME_DATABASE_URL=sqlite://DB/eyes-on-me.db
 \"%ROOT_DIR%bin\\$SERVER_BIN_NAME\""
 
     write_windows_script "$OUTPUT_DIR/$AGENT_RUN_NAME" "@echo off
@@ -136,9 +136,9 @@ set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\$0\")\" && pwd)\"
 cd \"\$ROOT_DIR\"
 mkdir -p \"\$ROOT_DIR/DB\"
-export AMI_OKAY_HOST=\"\${AMI_OKAY_HOST:-127.0.0.1}\"
-export AMI_OKAY_PORT=\"\${AMI_OKAY_PORT:-8787}\"
-export AMI_OKAY_DATABASE_URL=\"\${AMI_OKAY_DATABASE_URL:-sqlite://\$ROOT_DIR/DB/eyes-on-me.db}\"
+export EYES_ON_ME_HOST=\"\${EYES_ON_ME_HOST:-0.0.0.0}\"
+export EYES_ON_ME_PORT=\"\${EYES_ON_ME_PORT:-8787}\"
+export EYES_ON_ME_DATABASE_URL=\"\${EYES_ON_ME_DATABASE_URL:-sqlite://\$ROOT_DIR/DB/eyes-on-me.db}\"
 exec \"\$ROOT_DIR/bin/$SERVER_BIN_NAME\""
 
   write_unix_script "$OUTPUT_DIR/$SERVER_PUBLIC_RUN_NAME" "#!/usr/bin/env bash
@@ -146,9 +146,9 @@ set -euo pipefail
 ROOT_DIR=\"\$(cd \"\$(dirname \"\$0\")\" && pwd)\"
 cd \"\$ROOT_DIR\"
 mkdir -p \"\$ROOT_DIR/DB\"
-export AMI_OKAY_HOST=\"\${AMI_OKAY_HOST:-0.0.0.0}\"
-export AMI_OKAY_PORT=\"\${AMI_OKAY_PORT:-8787}\"
-export AMI_OKAY_DATABASE_URL=\"\${AMI_OKAY_DATABASE_URL:-sqlite://\$ROOT_DIR/DB/eyes-on-me.db}\"
+export EYES_ON_ME_HOST=\"\${EYES_ON_ME_HOST:-0.0.0.0}\"
+export EYES_ON_ME_PORT=\"\${EYES_ON_ME_PORT:-8787}\"
+export EYES_ON_ME_DATABASE_URL=\"\${EYES_ON_ME_DATABASE_URL:-sqlite://\$ROOT_DIR/DB/eyes-on-me.db}\"
 exec \"\$ROOT_DIR/bin/$SERVER_BIN_NAME\""
 
   write_unix_script "$OUTPUT_DIR/$AGENT_RUN_NAME" "#!/usr/bin/env bash

@@ -10,21 +10,21 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
-        let host = env::var("AMI_OKAY_HOST")
+        let host = env::var("EYES_ON_ME_HOST")
             .ok()
             .and_then(|value| value.parse().ok())
-            .unwrap_or(Ipv4Addr::new(127, 0, 0, 1));
+            .unwrap_or(Ipv4Addr::new(0, 0, 0, 0));
 
-        let port = env::var("AMI_OKAY_PORT")
+        let port = env::var("EYES_ON_ME_PORT")
             .ok()
             .and_then(|value| value.parse().ok())
             .unwrap_or(8787);
 
-        let web_dist_dir = env::var("AMI_OKAY_WEB_DIST")
+        let web_dist_dir = env::var("EYES_ON_ME_WEB_DIST")
             .ok()
             .map(PathBuf::from)
             .or_else(|| Some(PathBuf::from("../web/dist")));
-        let database_url = env::var("AMI_OKAY_DATABASE_URL")
+        let database_url = env::var("EYES_ON_ME_DATABASE_URL")
             .unwrap_or_else(|_| "sqlite://DB/eyes-on-me.db".to_string());
 
         Self {
