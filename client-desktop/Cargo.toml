@@ -28,7 +28,7 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = ["N
 
 [target.'cfg(target_os = "windows")'.dependencies]
 uiautomation = "0.24"
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_Accessibility", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_UI_Controls", "Win32_Graphics_Direct3D"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_Accessibility", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }
 winapi = { version = "0.3", features = ["winuser", "sysinfoapi", "winnt"] }
 
 [lints.rust]

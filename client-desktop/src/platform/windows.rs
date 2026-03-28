@@ -34,11 +34,15 @@ pub fn capture_screen() -> Result<Vec<u8>> {
         let width = rect.right - rect.left;
         let height = rect.bottom - rect.top;
         
+        if width <= 0 || height <= 0 {
+            return Err(anyhow::anyhow!("invalid screen dimensions: {}x{}", width, height));
+        }
+
         let hdc_screen = GetDC(0);
         let hdc_mem = CreateCompatibleDC(hdc_screen);
         let hbm_screen = CreateCompatibleBitmap(hdc_screen, width, height);
         
-        SelectObject(hdc_mem, hbm_screen);
+        let old_obj = SelectObject(hdc_mem, hbm_screen);
         
         BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY);
         
@@ -48,7 +52,7 @@ pub fn capture_screen() -> Result<Vec<u8>> {
             biHeight: -height, // top-down
             biPlanes: 1,
             biBitCount: 32,
-            biCompression: BI_RGB,
+            biCompression: BI_RGB as u32,
             biSizeImage: 0,
             biXPelsPerMeter: 0,
             biYPelsPerMeter: 0,
@@ -64,7 +68,7 @@ pub fn capture_screen() -> Result<Vec<u8>> {
             0,
             height as u32,
             buffer.as_mut_ptr() as *mut _,
-            (&mut bmi as *mut BITMAPINFOHEADER) as *mut _,
+            &mut bmi as *mut _ as *mut _,
             DIB_RGB_COLORS,
         );
         
@@ -77,6 +81,7 @@ pub fn capture_screen() -> Result<Vec<u8>> {
         }
         
         // Cleanup
+        SelectObject(hdc_mem, old_obj);
         DeleteObject(hbm_screen);
         DeleteDC(hdc_mem);
         ReleaseDC(0, hdc_screen);
