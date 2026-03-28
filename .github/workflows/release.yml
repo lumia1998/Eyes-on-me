@@ -15,6 +15,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Update dependencies
+        run: cargo update
+
       - name: Build Agent
         run: cargo build -p client-desktop --release
 
