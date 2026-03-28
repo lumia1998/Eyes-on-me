@@ -45,6 +45,10 @@ struct LastSentState {
     sent_at: Instant,
 }
 
+pub fn capture_screen() -> Result<Vec<u8>> {
+    Err(anyhow::anyhow!("capture_screen is not implemented on macos yet"))
+}
+
 pub fn run_foreground_watcher(
     device_id: String,
     agent_name: String,

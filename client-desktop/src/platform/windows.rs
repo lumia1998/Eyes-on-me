@@ -19,6 +19,46 @@ use crate::browser::{BrowserContext, detect_browser_context_for_window, page_sig
 use crate::event::{ActivityEnvelope, AppInfo};
 use crate::{idle, screen_lock};
 
+pub fn capture_screen() -> Result<Vec<u8>> {
+    use scrap::{Capturer, Display};
+
+    let display = Display::primary().map_err(|e| anyhow::anyhow!("failed to get primary display: {}", e))?;
+    let mut capturer = Capturer::new(display).map_err(|e| anyhow::anyhow!("failed to create capturer: {}", e))?;
+    let (width, height) = (capturer.width(), capturer.height());
+
+    let frame = loop {
+        match capturer.frame() {
+            Ok(buffer) => break buffer,
+            Err(error) => {
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    thread::sleep(Duration::from_millis(50));
+                    continue;
+                } else {
+                    return Err(anyhow::anyhow!("failed to capture frame: {}", error));
+                }
+            }
+        }
+    };
+
+    // scrap returns BGRA8 by default on Windows
+    let mut rgba = Vec::with_capacity(width * height * 3);
+    for chunk in frame.chunks_exact(4) {
+        rgba.push(chunk[2]); // R
+        rgba.push(chunk[1]); // G
+        rgba.push(chunk[0]); // B
+    }
+
+    let mut jpeg_data = Vec::new();
+    let mut cursor = io::Cursor::new(&mut jpeg_data);
+
+    image::ExtendedColorType::Rgb8;
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 80)
+        .encode(&rgba, width as u32, height as u32, image::ColorType::Rgb8)
+        .map_err(|e| anyhow::anyhow!("failed to encode jpeg: {}", e))?;
+
+    Ok(jpeg_data)
+}
+
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(15);
 

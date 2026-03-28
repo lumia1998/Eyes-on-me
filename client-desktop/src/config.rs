@@ -21,6 +21,7 @@ const DEFAULT_DEVICE_ID: &str = "client-desktop";
 #[derive(Debug, Clone)]
 pub struct Config {
     pub server_api_base_url: String,
+    pub agent_api_prefix: String,
     pub device_id: String,
     pub agent_name: String,
     pub api_token: String,
@@ -30,6 +31,12 @@ pub struct Config {
 struct StoredConfig {
     #[serde(alias = "server_ws_url")]
     server_api_base_url: String,
+    #[serde(
+        default = "default_agent_api_prefix",
+        alias = "agent_route_prefix",
+        alias = "api_prefix"
+    )]
+    agent_api_prefix: String,
     device_id: String,
     #[serde(default = "default_agent_name")]
     agent_name: String,
@@ -50,6 +57,7 @@ impl Config {
             let stored_config = stored_config.unwrap_or_else(|| {
                 let config = StoredConfig {
                     server_api_base_url: default_server_api_base_url(),
+                    agent_api_prefix: default_agent_api_prefix(),
                     device_id: default_device_id(),
                     agent_name: default_agent_name(),
                     api_token: default_agent_api_token(),
@@ -62,6 +70,7 @@ impl Config {
                 server_api_base_url: normalize_server_api_base_url(
                     stored_config.server_api_base_url,
                 )?,
+                agent_api_prefix: normalize_agent_api_prefix(stored_config.agent_api_prefix),
                 device_id: stored_config.device_id,
                 agent_name: stored_config.agent_name,
                 api_token: stored_config.api_token,
@@ -71,14 +80,15 @@ impl Config {
         if no_prompt {
             let config = stored_config.unwrap_or_else(|| StoredConfig {
                 server_api_base_url: default_server_api_base_url(),
+                agent_api_prefix: default_agent_api_prefix(),
                 device_id: default_device_id(),
                 agent_name: default_agent_name(),
                 api_token: default_agent_api_token(),
             });
-
             save_stored_config(&config_path, &config);
             return Ok(Self {
                 server_api_base_url: normalize_server_api_base_url(config.server_api_base_url)?,
+                agent_api_prefix: normalize_agent_api_prefix(config.agent_api_prefix),
                 device_id: config.device_id,
                 agent_name: config.agent_name,
                 api_token: config.api_token,
@@ -109,10 +119,17 @@ impl Config {
             .unwrap_or_else(default_agent_api_token);
         let api_token = prompt_agent_api_token(&default_api_token)?;
 
+        let default_agent_api_prefix = stored_config
+            .as_ref()
+            .map(|config| config.agent_api_prefix.clone())
+            .unwrap_or_else(default_agent_api_prefix);
+        let agent_api_prefix = prompt_agent_api_prefix(&default_agent_api_prefix)?;
+
         save_stored_config(
             &config_path,
             &StoredConfig {
                 server_api_base_url: server_api_base_url.clone(),
+                agent_api_prefix: agent_api_prefix.clone(),
                 device_id: device_id.clone(),
                 agent_name: agent_name.clone(),
                 api_token: api_token.clone(),
@@ -121,6 +138,7 @@ impl Config {
 
         Ok(Self {
             server_api_base_url,
+            agent_api_prefix: normalize_agent_api_prefix(agent_api_prefix),
             device_id,
             agent_name,
             api_token,
@@ -210,6 +228,26 @@ fn validate_server_api_base_url(url: String) -> Result<String> {
     Ok(parsed.to_string().trim_end_matches('/').to_string())
 }
 
+fn normalize_agent_api_prefix(value: String) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed == "/" {
+        return String::new();
+    }
+
+    let mut normalized = trimmed.replace('\\', "/");
+    if !normalized.starts_with('/') {
+        normalized.insert(0, '/');
+    }
+
+    normalized.trim_end_matches('/').to_string()
+}
+
+fn default_agent_api_prefix() -> String {
+    env::var("AGENT_API_PREFIX")
+        .or_else(|_| env::var("AGENT_ROUTE_PREFIX"))
+        .unwrap_or_default()
+}
+
 fn resolve_config_path() -> PathBuf {
     if let Ok(path) = env::var("AGENT_CONFIG_PATH") {
         let candidate = PathBuf::from(path);
@@ -235,6 +273,172 @@ fn current_dir_config_path() -> PathBuf {
     env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
         .join(CONFIG_FILE_NAME)
+}
+
+fn prompt_agent_api_prefix(default_value: &str) -> io::Result<String> {
+    let mut stdout = io::stdout();
+    writeln!(
+        stdout,
+        "Please enter agent API prefix (leave empty for default /api/agent routes)"
+    )?;
+    write!(stdout, "Agent API prefix [{}]: ", default_value)?;
+    stdout.flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let raw = if input.trim().is_empty() {
+        default_value.to_string()
+    } else {
+        input
+    };
+
+    Ok(normalize_agent_api_prefix(raw))
+}
+
+fn executable_dir_config_path() -> PathBuf {
+    env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .join(CONFIG_FILE_NAME)
+}
+
+fn load_stored_config(path: &Path) -> Option<StoredConfig> {
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return None,
+        Err(err) => {
+            warn!(path = %path.display(), %err, "failed to read config file");
+            return None;
+        }
+    };
+
+    match serde_json::from_str::<StoredConfig>(&raw) {
+        Ok(config) => Some(config),
+        Err(err) => {
+            warn!(path = %path.display(), %err, "failed to parse config file");
+            None
+        }
+    }
+}
+
+fn save_stored_config(path: &Path, config: &StoredConfig) {
+    let raw = match serde_json::to_string_pretty(config) {
+        Ok(raw) => raw,
+        Err(err) => {
+            error!(path = %path.display(), %err, "failed to serialize config file");
+            return;
+        }
+    };
+
+    if let Err(err) = fs::write(path, format!("{raw}\n")) {
+        error!(path = %path.display(), %err, "failed to write config file");
+    }
+}
+
+fn default_server_api_base_url() -> String {
+    env::var("AGENT_SERVER_API_BASE_URL")
+        .or_else(|_| env::var("AGENT_SERVER_WS_URL"))
+        .unwrap_or_else(|_| "http://127.0.0.1:8787".to_string())
+}
+
+fn default_device_id() -> String {
+    env::var("AGENT_DEVICE_ID").unwrap_or_else(|_| {
+        hostname::get()
+            .ok()
+            .and_then(|host| host.into_string().ok())
+            .filter(|host| !host.is_empty())
+            .unwrap_or_else(|| DEFAULT_DEVICE_ID.to_string())
+    })
+}
+
+fn prompt_server_api_base_url(default_value: &str) -> io::Result<String> {
+    let mut stdout = io::stdout();
+    writeln!(
+        stdout,
+        "Please enter backend address (example: http://127.0.0.1:8787)"
+    )?;
+    write!(stdout, "Backend address [{default_value}]: ")?;
+    stdout.flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let raw = if input.trim().is_empty() {
+        default_value.to_string()
+    } else {
+        input
+    };
+
+    normalize_server_api_base_url(raw).map_err(io::Error::other)
+}
+
+fn prompt_device_id(default_value: &str) -> io::Result<String> {
+    let mut stdout = io::stdout();
+    writeln!(stdout, "Please enter current device ID")?;
+    write!(stdout, "Device ID [{default_value}]: ")?;
+    stdout.flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Ok(default_value.to_string());
+    }
+
+    Ok(trimmed.to_string())
+}
+
+fn default_agent_api_token() -> String {
+    env::var("AGENT_API_TOKEN").unwrap_or_else(|_| "dev-agent-token".to_string())
+}
+
+fn default_agent_name() -> String {
+    env::var("AGENT_NAME").unwrap_or_else(|_| DESKTOP_AGENT_NAME.to_string())
+}
+
+fn prompt_agent_name(default_value: &str) -> io::Result<String> {
+    let mut stdout = io::stdout();
+    writeln!(stdout, "Please enter current agent name")?;
+    write!(stdout, "Agent name [{default_value}]: ")?;
+    stdout.flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        if default_value.trim().is_empty() {
+            return Err(io::Error::other("agent name is required"));
+        }
+
+        return Ok(default_value.to_string());
+    }
+
+    Ok(trimmed.to_string())
+}
+
+fn prompt_agent_api_token(default_value: &str) -> io::Result<String> {
+    let mut stdout = io::stdout();
+    writeln!(stdout, "Please enter agent API token")?;
+    write!(stdout, "Agent API token [{default_value}]: ")?;
+    stdout.flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        if default_value.trim().is_empty() {
+            return Err(io::Error::other("agent API token is required"));
+        }
+
+        return Ok(default_value.to_string());
+    }
+
+    Ok(trimmed.to_string())
 }
 
 fn executable_dir_config_path() -> PathBuf {

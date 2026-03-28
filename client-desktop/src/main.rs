@@ -34,6 +34,7 @@ async fn main() -> Result<()> {
     let cfg = config::Config::from_prompt()?;
     info!(
         server_api_base_url = %cfg.server_api_base_url,
+        agent_api_prefix = %cfg.agent_api_prefix,
         device_id = %cfg.device_id,
         agent_name = %cfg.agent_name,
         "agent starting"
@@ -43,7 +44,10 @@ async fn main() -> Result<()> {
 
     let _transport_task = tokio::spawn(transport::run_transport(
         cfg.server_api_base_url.clone(),
+        cfg.agent_api_prefix.clone(),
         cfg.api_token.clone(),
+        cfg.device_id.clone(),
+        cfg.agent_name.clone(),
         rx,
     ));
 

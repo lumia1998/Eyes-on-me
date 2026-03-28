@@ -38,6 +38,10 @@ struct LastSentState {
     sent_at: Instant,
 }
 
+pub fn capture_screen() -> Result<Vec<u8>> {
+    Err(anyhow!("capture_screen is not implemented on linux yet"))
+}
+
 pub fn run_foreground_watcher(
     device_id: String,
     agent_name: String,
