@@ -7,12 +7,17 @@ use anyhow::Result;
 use eyes_on_me_shared::PresenceState;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
-use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, HWND};
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, HWND, RECT};
 use windows_sys::Win32::System::Threading::{
     OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+    GetDesktopWindow, GetWindowRect,
+};
+use windows_sys::Win32::Graphics::Gdi::{
+    GetDC, ReleaseDC, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
+    BitBlt, DeleteDC, DeleteObject, GetDIBits, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, SRCCOPY,
 };
 
 #[allow(unused_imports)]
@@ -21,47 +26,75 @@ use crate::event::{ActivityEnvelope, AppInfo};
 use crate::{idle, screen_lock};
 
 pub fn capture_screen() -> Result<Vec<u8>> {
-    use scrap::{Capturer, Display};
-
-    let display = Display::primary().map_err(|e| anyhow::anyhow!("failed to get primary display: {}", e))?;
-    let mut capturer = Capturer::new(display).map_err(|e| anyhow::anyhow!("failed to create capturer: {}", e))?;
-    let (width, height) = (capturer.width(), capturer.height());
-
-    let frame = loop {
-        match capturer.frame() {
-            Ok(buffer) => break buffer,
-            Err(error) => {
-                if error.kind() == io::ErrorKind::WouldBlock {
-                    thread::sleep(Duration::from_millis(50));
-                    continue;
-                } else {
-                    return Err(anyhow::anyhow!("failed to capture frame: {}", error));
-                }
-            }
-        }
-    };
-
-    // scrap returns BGRA8 by default on Windows
-    let mut rgba = Vec::with_capacity(width * height * 3);
-    for chunk in frame.chunks_exact(4) {
-        rgba.push(chunk[2]); // R
-        rgba.push(chunk[1]); // G
-        rgba.push(chunk[0]); // B
-    }
-
-    let mut jpeg_data = Vec::new();
-    let mut cursor = io::Cursor::new(&mut jpeg_data);
-
-    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 80)
-        .encode(
-            &rgba,
-            width as u32,
+    unsafe {
+        let hwnd = GetDesktopWindow();
+        let mut rect: RECT = std::mem::zeroed();
+        GetWindowRect(hwnd, &mut rect);
+        
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        
+        let hdc_screen = GetDC(0);
+        let hdc_mem = CreateCompatibleDC(hdc_screen);
+        let hbm_screen = CreateCompatibleBitmap(hdc_screen, width, height);
+        
+        SelectObject(hdc_mem, hbm_screen);
+        
+        BitBlt(hdc_mem, 0, 0, width, height, hdc_screen, 0, 0, SRCCOPY);
+        
+        let mut bmi = BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: width,
+            biHeight: -height, // top-down
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB,
+            biSizeImage: 0,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+        };
+        
+        let mut buffer: Vec<u8> = vec![0; (width * height * 4) as usize];
+        
+        GetDIBits(
+            hdc_screen,
+            hbm_screen,
+            0,
             height as u32,
-            image::ColorType::Rgb8.into(),
-        )
-        .map_err(|e| anyhow::anyhow!("failed to encode jpeg: {}", e))?;
-
-    Ok(jpeg_data)
+            buffer.as_mut_ptr() as *mut _,
+            (&mut bmi as *mut BITMAPINFOHEADER) as *mut _,
+            DIB_RGB_COLORS,
+        );
+        
+        // Convert BGRA to RGB
+        let mut rgb_data = Vec::with_capacity((width * height * 3) as usize);
+        for chunk in buffer.chunks_exact(4) {
+            rgb_data.push(chunk[2]); // R
+            rgb_data.push(chunk[1]); // G
+            rgb_data.push(chunk[0]); // B
+        }
+        
+        // Cleanup
+        DeleteObject(hbm_screen);
+        DeleteDC(hdc_mem);
+        ReleaseDC(0, hdc_screen);
+        
+        let mut jpeg_data = Vec::new();
+        let mut cursor = io::Cursor::new(&mut jpeg_data);
+        
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 80)
+            .encode(
+                &rgb_data,
+                width as u32,
+                height as u32,
+                image::ExtendedColorType::Rgb8,
+            )
+            .map_err(|e| anyhow::anyhow!("failed to encode jpeg: {}", e))?;
+            
+        Ok(jpeg_data)
+    }
 }
 
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
