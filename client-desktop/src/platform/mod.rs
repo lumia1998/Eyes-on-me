@@ -14,4 +14,5 @@ pub use macos::{capture_screen, run_foreground_watcher};
 pub use windows::{capture_screen, run_foreground_watcher};
 
 #[cfg(target_os = "linux")]
+#[allow(unused_imports)]
 pub use linux::{capture_screen, run_foreground_watcher};

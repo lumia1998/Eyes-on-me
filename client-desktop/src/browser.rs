@@ -174,6 +174,7 @@ const BROWSERS: &[BrowserDefinition] = &[
     },
 ];
 
+#[allow(dead_code)]
 pub fn detect_browser_context(app: &AppInfo, window_title: Option<&str>) -> Option<BrowserContext> {
     detect_browser_context_internal(app, window_title, None)
 }
@@ -200,7 +201,7 @@ pub fn detect_browser_context_for_window(
 fn detect_browser_context_internal(
     app: &AppInfo,
     window_title: Option<&str>,
-    #[allow(unused_variables)] hwnd: Option<isize>,
+    hwnd: Option<isize>,
 ) -> Option<BrowserContext> {
     let browser = match_browser(app)?;
 

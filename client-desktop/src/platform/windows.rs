@@ -15,6 +15,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
 };
 
+#[allow(unused_imports)]
 use crate::browser::{BrowserContext, detect_browser_context_for_window, page_signature};
 use crate::event::{ActivityEnvelope, AppInfo};
 use crate::{idle, screen_lock};
@@ -51,9 +52,13 @@ pub fn capture_screen() -> Result<Vec<u8>> {
     let mut jpeg_data = Vec::new();
     let mut cursor = io::Cursor::new(&mut jpeg_data);
 
-    image::ExtendedColorType::Rgb8;
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, 80)
-        .encode(&rgba, width as u32, height as u32, image::ColorType::Rgb8)
+        .encode(
+            &rgba,
+            width as u32,
+            height as u32,
+            image::ColorType::Rgb8.into(),
+        )
         .map_err(|e| anyhow::anyhow!("failed to encode jpeg: {}", e))?;
 
     Ok(jpeg_data)

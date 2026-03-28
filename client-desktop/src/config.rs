@@ -47,6 +47,8 @@ impl Config {
     pub fn from_prompt() -> Result<Self> {
         let config_path = resolve_config_path();
         let stored_config = load_stored_config(&config_path);
+        #[cfg(not(target_os = "windows"))]
+        #[allow(unused_variables)]
         let no_prompt = env::var("AGENT_NO_PROMPT")
             .ok()
             .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
@@ -77,6 +79,7 @@ impl Config {
             });
         }
 
+        #[cfg(not(target_os = "windows"))]
         if no_prompt {
             let config = stored_config.unwrap_or_else(|| StoredConfig {
                 server_api_base_url: default_server_api_base_url(),
@@ -94,6 +97,7 @@ impl Config {
                 api_token: config.api_token,
             });
         }
+
 
         let default_server_api_base_url = stored_config
             .as_ref()
@@ -294,151 +298,6 @@ fn prompt_agent_api_prefix(default_value: &str) -> io::Result<String> {
     };
 
     Ok(normalize_agent_api_prefix(raw))
-}
-
-fn executable_dir_config_path() -> PathBuf {
-    env::current_exe()
-        .ok()
-        .and_then(|path| path.parent().map(Path::to_path_buf))
-        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
-        .join(CONFIG_FILE_NAME)
-}
-
-fn load_stored_config(path: &Path) -> Option<StoredConfig> {
-    let raw = match fs::read_to_string(path) {
-        Ok(raw) => raw,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return None,
-        Err(err) => {
-            warn!(path = %path.display(), %err, "failed to read config file");
-            return None;
-        }
-    };
-
-    match serde_json::from_str::<StoredConfig>(&raw) {
-        Ok(config) => Some(config),
-        Err(err) => {
-            warn!(path = %path.display(), %err, "failed to parse config file");
-            None
-        }
-    }
-}
-
-fn save_stored_config(path: &Path, config: &StoredConfig) {
-    let raw = match serde_json::to_string_pretty(config) {
-        Ok(raw) => raw,
-        Err(err) => {
-            error!(path = %path.display(), %err, "failed to serialize config file");
-            return;
-        }
-    };
-
-    if let Err(err) = fs::write(path, format!("{raw}\n")) {
-        error!(path = %path.display(), %err, "failed to write config file");
-    }
-}
-
-fn default_server_api_base_url() -> String {
-    env::var("AGENT_SERVER_API_BASE_URL")
-        .or_else(|_| env::var("AGENT_SERVER_WS_URL"))
-        .unwrap_or_else(|_| "http://127.0.0.1:8787".to_string())
-}
-
-fn default_device_id() -> String {
-    env::var("AGENT_DEVICE_ID").unwrap_or_else(|_| {
-        hostname::get()
-            .ok()
-            .and_then(|host| host.into_string().ok())
-            .filter(|host| !host.is_empty())
-            .unwrap_or_else(|| DEFAULT_DEVICE_ID.to_string())
-    })
-}
-
-fn prompt_server_api_base_url(default_value: &str) -> io::Result<String> {
-    let mut stdout = io::stdout();
-    writeln!(
-        stdout,
-        "Please enter backend address (example: http://127.0.0.1:8787)"
-    )?;
-    write!(stdout, "Backend address [{default_value}]: ")?;
-    stdout.flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    let raw = if input.trim().is_empty() {
-        default_value.to_string()
-    } else {
-        input
-    };
-
-    normalize_server_api_base_url(raw).map_err(io::Error::other)
-}
-
-fn prompt_device_id(default_value: &str) -> io::Result<String> {
-    let mut stdout = io::stdout();
-    writeln!(stdout, "Please enter current device ID")?;
-    write!(stdout, "Device ID [{default_value}]: ")?;
-    stdout.flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return Ok(default_value.to_string());
-    }
-
-    Ok(trimmed.to_string())
-}
-
-fn default_agent_api_token() -> String {
-    env::var("AGENT_API_TOKEN").unwrap_or_else(|_| "dev-agent-token".to_string())
-}
-
-fn default_agent_name() -> String {
-    env::var("AGENT_NAME").unwrap_or_else(|_| DESKTOP_AGENT_NAME.to_string())
-}
-
-fn prompt_agent_name(default_value: &str) -> io::Result<String> {
-    let mut stdout = io::stdout();
-    writeln!(stdout, "Please enter current agent name")?;
-    write!(stdout, "Agent name [{default_value}]: ")?;
-    stdout.flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        if default_value.trim().is_empty() {
-            return Err(io::Error::other("agent name is required"));
-        }
-
-        return Ok(default_value.to_string());
-    }
-
-    Ok(trimmed.to_string())
-}
-
-fn prompt_agent_api_token(default_value: &str) -> io::Result<String> {
-    let mut stdout = io::stdout();
-    writeln!(stdout, "Please enter agent API token")?;
-    write!(stdout, "Agent API token [{default_value}]: ")?;
-    stdout.flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        if default_value.trim().is_empty() {
-            return Err(io::Error::other("agent API token is required"));
-        }
-
-        return Ok(default_value.to_string());
-    }
-
-    Ok(trimmed.to_string())
 }
 
 fn executable_dir_config_path() -> PathBuf {

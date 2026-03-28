@@ -438,6 +438,7 @@ fn build_device_analysis_payload(
     }
 }
 
+#[allow(dead_code)]
 fn duration_within_window(
     start: OffsetDateTime,
     end: OffsetDateTime,
